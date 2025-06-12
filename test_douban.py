@@ -3,20 +3,47 @@
 
 from boxoffice_scraper import BoxOfficeScraper
 
-def test_imdb_feature():
-    """测试IMDb评分功能"""
-    print("=== 测试 IMDb 评分功能 ===")
+def test_douban_feature():
+    """测试豆瓣电影功能"""
+    print("=== 测试豆瓣电影功能 ===")
     
     scraper = BoxOfficeScraper(debug=False)
     
-    # 测试2025年5月数据（只抓取前3部电影）
+    # 测试一些知名电影
+    test_movies = [
+        "Lilo & Stitch",
+        "Thunderbolts",
+        "Avatar",
+        "Titanic",
+        "The Lion King"
+    ]
+    
+    print(f"\n测试豆瓣搜索功能...")
+    print(f"{'英文片名':<25} {'中文片名':<20} {'豆瓣评分':<8}")
+    print("-" * 60)
+    
+    for movie in test_movies:
+        try:
+            print(f"正在搜索: {movie}")
+            chinese_title, douban_rating = scraper.search_douban_movie(movie)
+            print(f"{movie:<25} {chinese_title:<20} {douban_rating:<8}")
+            print("-" * 60)
+            
+        except Exception as e:
+            print(f"搜索 {movie} 时出错: {e}")
+            print("-" * 60)
+
+def test_combined_features():
+    """测试IMDb和豆瓣组合功能"""
+    print("\n=== 测试组合功能（前2部电影）===")
+    
+    scraper = BoxOfficeScraper(debug=False)
+    
+    # 获取最新的票房数据（只抓前2部）
     year = 2025
     month = 5
     
-    print(f"\n测试 {year}年{month}月 数据（前3部电影）...")
-    
     try:
-        # 修改抓取逻辑，只获取前3部电影
         month_name = scraper.get_month_name(month)
         url = scraper.base_url.format(month=month_name, year=year)
         print(f"正在抓取: {url}")
@@ -28,10 +55,7 @@ def test_imdb_feature():
         from bs4 import BeautifulSoup
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # 查找票房数据表格
         table = soup.find('table', class_='a-bordered')
-        if not table:
-            table = soup.find('table', class_='mojo-body-table')
         if not table:
             table = soup.find('table')
         
@@ -39,7 +63,6 @@ def test_imdb_feature():
             print("未找到数据表格")
             return
         
-        # 获取表格行
         tbody = table.find('tbody')
         if tbody:
             rows = tbody.find_all('tr')
@@ -50,23 +73,16 @@ def test_imdb_feature():
         
         movies_data = []
         
-        # 只处理前3行数据
-        for i, row in enumerate(rows[:3]):
+        # 只处理前2行数据
+        for i, row in enumerate(rows[:2]):
             cells = row.find_all('td')
             if len(cells) >= 7:
                 try:
-                    # 排名
                     rank = cells[0].get_text(strip=True)
-                    
-                    # 电影名称
                     release_cell = cells[1]
                     release_link = release_cell.find('a')
                     release_name = release_link.get_text(strip=True) if release_link else release_cell.get_text(strip=True)
-                    
-                    # 累计票房
                     total_gross_text = cells[7].get_text(strip=True)
-                    
-                    # 首映日期
                     release_date_raw = cells[8].get_text(strip=True) if len(cells) > 8 else "N/A"
                     release_date = scraper.convert_date_to_chinese(release_date_raw)
                     
@@ -89,7 +105,8 @@ def test_imdb_feature():
                     }
                     
                     movies_data.append(movie_data)
-                    print(f"✅ 完成: {rank}. {release_name} / {chinese_title} (IMDb: {imdb_rating}, 豆瓣: {douban_rating})")
+                    print(f"✅ 完成: {rank}. {release_name} / {chinese_title}")
+                    print(f"   IMDb: {imdb_rating}, 豆瓣: {douban_rating}")
                     
                 except Exception as e:
                     print(f"❌ 处理第{i+1}行数据时出错: {e}")
@@ -97,8 +114,8 @@ def test_imdb_feature():
         
         # 显示结果
         if movies_data:
-            print(f"\n🎉 成功获取 {len(movies_data)} 部电影的数据！")
-            print("\n📊 详细结果:")
+            print(f"\n🎉 成功获取 {len(movies_data)} 部电影的完整数据！")
+            print("\n📊 最终结果:")
             print(f"{'排名':<4} {'英文片名':<25} {'中文片名':<20} {'累计票房':<15} {'首映日期':<10} {'IMDb':<6} {'豆瓣':<6}")
             print("-" * 92)
             
@@ -113,7 +130,7 @@ def test_imdb_feature():
                 print(f"{rank:<4} {en_name:<25} {cn_name:<20} {gross:<15} {date:<10} {imdb_rating:<6} {douban_rating:<6}")
             
             # 保存测试数据
-            filename = scraper.save_to_csv(movies_data, year, month, "data/test_imdb_2025_05.csv")
+            filename = scraper.save_to_csv(movies_data, year, month, "data/test_douban_combined.csv")
             print(f"\n💾 测试数据已保存到: {filename}")
         else:
             print("❌ 未获取到任何数据")
@@ -124,4 +141,8 @@ def test_imdb_feature():
         traceback.print_exc()
 
 if __name__ == "__main__":
-    test_imdb_feature() 
+    # 首先测试纯豆瓣搜索功能
+    test_douban_feature()
+    
+    # 然后测试组合功能
+    test_combined_features() 

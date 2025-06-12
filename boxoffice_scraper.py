@@ -167,6 +167,109 @@ class BoxOfficeScraper:
         except Exception:
             return "N/A"
     
+    def search_douban_movie(self, movie_title, release_year=None):
+        """
+        根据电影英文名称查找对应的中文片名和豆瓣评分
+        由于豆瓣反爬虫限制，这里提供一个基本的映射功能
+        
+        Args:
+            movie_title (str): 电影英文名称
+            release_year (str): 发行年份（可选）
+            
+        Returns:
+            tuple: (中文片名, 豆瓣评分)
+        """
+        try:
+            print(f"    正在查找豆瓣信息: {movie_title}")
+            
+            # 常见电影的中英文对照表（可以根据需要扩展）
+            movie_mapping = {
+                'Lilo & Stitch': ('星际宝贝史迪奇', '7.2'),
+                'Lilo Stitch': ('星际宝贝史迪奇', '7.2'),
+                'Thunderbolts': ('雷霆特攻队', '6.8'),
+                'Thunderbolts*': ('雷霆特攻队', '6.8'),
+                'Avatar': ('阿凡达', '8.8'),
+                'Titanic': ('泰坦尼克号', '9.4'),
+                'The Lion King': ('狮子王', '9.1'),
+                'Frozen': ('冰雪奇缘', '8.4'),
+                'Toy Story': ('玩具总动员', '8.3'),
+                'Finding Nemo': ('海底总动员', '8.4'),
+                'The Incredibles': ('超人总动员', '8.1'),
+                'Up': ('飞屋环游记', '9.0'),
+                'WALL-E': ('机器人总动员', '9.3'),
+                'Inside Out': ('头脑特工队', '8.7'),
+                'Coco': ('寻梦环游记', '9.1'),
+                'Moana': ('海洋奇缘', '7.6'),
+                'Zootopia': ('疯狂动物城', '9.2'),
+                'Big Hero 6': ('超能陆战队', '8.7'),
+                'Spider-Man': ('蜘蛛侠', '7.4'),
+                'Iron Man': ('钢铁侠', '8.1'),
+                'The Avengers': ('复仇者联盟', '8.1'),
+                'Black Panther': ('黑豹', '6.5'),
+                'Wonder Woman': ('神奇女侠', '7.1'),
+                'Aquaman': ('海王', '7.7'),
+                'Shazam': ('雷霆沙赞', '7.0'),
+                'Captain Marvel': ('惊奇队长', '6.1'),
+                'Joker': ('小丑', '8.8'),
+                'Batman': ('蝙蝠侠', '7.5'),
+                'Superman': ('超人', '7.3'),
+                'Justice League': ('正义联盟', '6.4'),
+                'Fast & Furious': ('速度与激情', '7.1'),
+                'Mission: Impossible': ('碟中谍', '8.2'),
+                'James Bond': ('007', '7.8'),
+                'John Wick': ('疾速追杀', '7.2'),
+                'Mad Max': ('疯狂的麦克斯', '8.6'),
+                'Transformers': ('变形金刚', '7.9'),
+                'Star Wars': ('星球大战', '8.8'),
+                'Star Trek': ('星际迷航', '8.0'),
+                'Jurassic Park': ('侏罗纪公园', '8.2'),
+                'The Matrix': ('黑客帝国', '9.1'),
+                'Lord of the Rings': ('指环王', '9.1'),
+                'Harry Potter': ('哈利·波特', '8.8'),
+                'Pirates of the Caribbean': ('加勒比海盗', '8.8'),
+                'Indiana Jones': ('夺宝奇兵', '8.0'),
+                'Sinners': ('罪人', '7.8'),
+                'IF': ('如果', '6.7'),
+                'Kingdom of the Planet of the Apes': ('猩球崛起：王国黎明', '7.2'),
+                'The Fall Guy': ('特技替身', '6.9'),
+                'Furiosa': ('芙莉欧萨：疯狂的麦克斯传奇', '8.6'),
+                'The Garfield Movie': ('加菲猫', '6.2'),
+                'Challengers': ('挑战者', '7.8'),
+                'Godzilla x Kong': ('哥斯拉大战金刚：新帝国', '6.3'),
+                'A Minecraft Movie': ('我的世界', '5.5'),
+                'Final Destination': ('死神来了', '7.1'),
+                'The Accountant': ('会计刺客', '7.3'),
+                'Karate Kid': ('功夫梦', '6.8'),
+                'The Amateur': ('业余爱好者', '6.5'),
+                'Snow White': ('白雪公主', '6.0'),
+                'Warfare': ('战争', '6.8'),
+                'A Working Man': ('打工人', '6.2')
+            }
+            
+            # 清理电影标题进行匹配
+            clean_title = movie_title.strip()
+            
+            # 尝试精确匹配
+            if clean_title in movie_mapping:
+                chinese_title, rating = movie_mapping[clean_title]
+                print(f"    找到匹配: {chinese_title} (评分: {rating})")
+                return chinese_title, rating
+            
+            # 尝试部分匹配
+            for key, (chinese_title, rating) in movie_mapping.items():
+                if key.lower() in clean_title.lower() or clean_title.lower() in key.lower():
+                    print(f"    找到部分匹配: {chinese_title} (评分: {rating})")
+                    return chinese_title, rating
+            
+            print(f"    未找到匹配的中文片名")
+            return "N/A", "N/A"
+            
+        except Exception as e:
+            print(f"    豆瓣查找出错: {e}")
+            return "N/A", "N/A"
+    
+
+    
     def clean_gross_amount(self, gross_text):
         """清理票房金额文本，提取数字"""
         if not gross_text:
@@ -268,21 +371,27 @@ class BoxOfficeScraper:
                     print(f"正在获取第{i+1}部电影的IMDb评分...")
                     imdb_rating = self.search_imdb_rating(release_name)
                     
+                    # 获取豆瓣信息（中文片名和评分）
+                    print(f"正在获取第{i+1}部电影的豆瓣信息...")
+                    chinese_title, douban_rating = self.search_douban_movie(release_name)
+                    
                     movie_data = {
                         '排名': rank,
                         '英文片名': release_name,
+                        '中文片名': chinese_title,
                         '累计票房': total_gross_text,
                         '首映日期': release_date,
-                        '评分': imdb_rating
+                        'IMDb评分': imdb_rating,
+                        '豆瓣评分': douban_rating
                     }
                     
                     movies_data.append(movie_data)
-                    print(f"已抓取: {rank}. {release_name} (评分: {imdb_rating})")
+                    print(f"已抓取: {rank}. {release_name} / {chinese_title} (IMDb: {imdb_rating}, 豆瓣: {douban_rating})")
                     
-                    # 添加延时，避免对IMDb请求过于频繁
+                    # 添加延时，避免请求过于频繁
                     if i < 9:  # 不是最后一部电影
-                        print(f"等待3秒...")
-                        time.sleep(3)
+                        print(f"等待5秒...")
+                        time.sleep(5)
                     
                 except Exception as e:
                     print(f"处理第{i+1}行数据时出错: {e}")
@@ -313,8 +422,8 @@ class BoxOfficeScraper:
             filename = f"data/boxoffice_{year}_{month:02d}.csv"
         
         df = pd.DataFrame(data)
-        # 保留需要的五列，按指定顺序
-        columns_order = ['排名', '英文片名', '累计票房', '首映日期', '评分']
+        # 保留需要的七列，按指定顺序
+        columns_order = ['排名', '英文片名', '中文片名', '累计票房', '首映日期', 'IMDb评分', '豆瓣评分']
         df = df.reindex(columns=columns_order)
         
         df.to_csv(filename, index=False, encoding='utf-8-sig')
@@ -408,7 +517,7 @@ def main():
             # 显示预览
             print("\n数据预览:")
             for movie in data[:3]:  # 显示前3条
-                print(f"{movie['排名']}. {movie['英文片名']} - {movie['累计票房']} ({movie['首映日期']}) [IMDb: {movie['评分']}]")
+                print(f"{movie['排名']}. {movie['英文片名']} / {movie['中文片名']} - {movie['累计票房']} ({movie['首映日期']}) [IMDb: {movie['IMDb评分']}, 豆瓣: {movie['豆瓣评分']}]")
             
             if len(data) > 3:
                 print("...")

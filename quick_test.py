@@ -29,16 +29,18 @@ def quick_test():
         if data:
             print(f"\n✅ 成功！抓取到 {len(data)} 条数据")
             print("\n📊 数据预览:")
-            print(f"{'排名':<4} {'电影名称':<30} {'累计票房':<15} {'首映日期':<10} {'评分':<8}")
-            print("-" * 73)
+            print(f"{'排名':<4} {'英文片名':<25} {'中文片名':<20} {'累计票房':<15} {'首映日期':<10} {'IMDb':<6} {'豆瓣':<6}")
+            print("-" * 92)
             
             for movie in data[:5]:  # 显示前5条
                 rank = movie['排名']
-                name = movie['英文片名'][:25] + "..." if len(movie['英文片名']) > 25 else movie['英文片名']
+                en_name = movie['英文片名'][:20] + "..." if len(movie['英文片名']) > 20 else movie['英文片名']
+                cn_name = movie['中文片名'][:15] + "..." if len(movie['中文片名']) > 15 else movie['中文片名']
                 gross = movie['累计票房']
                 date = movie['首映日期']
-                rating = movie['评分']
-                print(f"{rank:<4} {name:<30} {gross:<15} {date:<10} {rating:<8}")
+                imdb_rating = movie['IMDb评分']
+                douban_rating = movie['豆瓣评分']
+                print(f"{rank:<4} {en_name:<25} {cn_name:<20} {gross:<15} {date:<10} {imdb_rating:<6} {douban_rating:<6}")
                 
             print(f"\n💾 准备保存数据...")
             filename = scraper.save_to_csv(data, year, month)

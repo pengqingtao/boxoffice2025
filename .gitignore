@@ -42,8 +42,8 @@ Thumbs.db
 *.log
 
 # Test files
-test_*.py
-*_test.py
+# test_*.py
+# *_test.py
 
 # Data files (optional - remove this line if you want to include sample data)
 # data/*.csv 

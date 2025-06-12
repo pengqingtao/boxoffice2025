@@ -5,6 +5,7 @@ import re
 import os
 from datetime import datetime
 import time
+import urllib.parse
 
 
 class BoxOfficeScraper:
@@ -64,6 +65,107 @@ class BoxOfficeScraper:
             
         except Exception:
             return date_text
+    
+    def search_imdb_rating(self, movie_title, release_year=None):
+        """
+        在IMDb上搜索电影并获取评分
+        
+        Args:
+            movie_title (str): 电影名称
+            release_year (str): 发行年份（可选）
+            
+        Returns:
+            str: IMDb评分，如果未找到则返回"N/A"
+        """
+        try:
+            # 清理电影标题，移除特殊字符
+            clean_title = re.sub(r'[^\w\s]', ' ', movie_title).strip()
+            
+            # 构建搜索URL
+            search_query = urllib.parse.quote(clean_title)
+            search_url = f"https://www.imdb.com/find?q={search_query}&s=tt&ttype=ft&ref_=fn_ft"
+            
+            print(f"    正在搜索IMDb: {clean_title}")
+            
+            # 发送搜索请求
+            response = requests.get(search_url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # 查找搜索结果
+            results = soup.find_all('li', class_='find-result-item')
+            if not results:
+                # 尝试新版页面结构
+                results = soup.find_all('li', class_='ipc-metadata-list-summary-item')
+            
+            if not results:
+                print(f"    未找到搜索结果")
+                return "N/A"
+            
+            # 遍历搜索结果，找到最匹配的电影
+            for result in results[:3]:  # 只检查前3个结果
+                title_link = result.find('a')
+                if not title_link:
+                    continue
+                
+                movie_url = "https://www.imdb.com" + title_link.get('href')
+                
+                # 获取电影详情页面
+                movie_response = requests.get(movie_url, headers=self.headers, timeout=10)
+                movie_response.raise_for_status()
+                
+                movie_soup = BeautifulSoup(movie_response.content, 'html.parser')
+                
+                # 查找评分
+                rating = self.extract_imdb_rating(movie_soup)
+                if rating and rating != "N/A":
+                    print(f"    找到评分: {rating}")
+                    return rating
+                
+                # 添加延时避免请求过频
+                time.sleep(1)
+            
+            print(f"    未找到有效评分")
+            return "N/A"
+            
+        except Exception as e:
+            print(f"    IMDb搜索出错: {e}")
+            return "N/A"
+    
+    def extract_imdb_rating(self, soup):
+        """
+        从IMDb电影页面提取评分
+        
+        Args:
+            soup: BeautifulSoup对象
+            
+        Returns:
+            str: 评分或"N/A"
+        """
+        try:
+            # 尝试多种可能的评分选择器
+            rating_selectors = [
+                'span[data-testid="rating-button__aggregate-rating__score"]',
+                '.AggregateRatingButton__RatingScore-sc-1ll29m0-1',
+                '.rating-other-user-rating .rating-other-user-rating__score',
+                '.ratingValue strong span',
+                '[data-testid="hero-rating-bar__aggregate-rating__score"]'
+            ]
+            
+            for selector in rating_selectors:
+                rating_element = soup.select_one(selector)
+                if rating_element:
+                    rating_text = rating_element.get_text(strip=True)
+                    # 提取数字评分
+                    rating_match = re.search(r'(\d+\.?\d*)', rating_text)
+                    if rating_match:
+                        return rating_match.group(1)
+            
+            return "N/A"
+            
+        except Exception:
+            return "N/A"
     
     def clean_gross_amount(self, gross_text):
         """清理票房金额文本，提取数字"""
@@ -162,15 +264,25 @@ class BoxOfficeScraper:
                     release_date_raw = cells[8].get_text(strip=True) if len(cells) > 8 else "N/A"
                     release_date = self.convert_date_to_chinese(release_date_raw)
                     
+                    # 获取IMDb评分
+                    print(f"正在获取第{i+1}部电影的IMDb评分...")
+                    imdb_rating = self.search_imdb_rating(release_name)
+                    
                     movie_data = {
                         '排名': rank,
                         '英文片名': release_name,
                         '累计票房': total_gross_text,
-                        '首映日期': release_date
+                        '首映日期': release_date,
+                        '评分': imdb_rating
                     }
                     
                     movies_data.append(movie_data)
-                    print(f"已抓取: {rank}. {release_name}")
+                    print(f"已抓取: {rank}. {release_name} (评分: {imdb_rating})")
+                    
+                    # 添加延时，避免对IMDb请求过于频繁
+                    if i < 9:  # 不是最后一部电影
+                        print(f"等待3秒...")
+                        time.sleep(3)
                     
                 except Exception as e:
                     print(f"处理第{i+1}行数据时出错: {e}")
@@ -201,8 +313,8 @@ class BoxOfficeScraper:
             filename = f"data/boxoffice_{year}_{month:02d}.csv"
         
         df = pd.DataFrame(data)
-        # 只保留需要的四列，按指定顺序
-        columns_order = ['排名', '英文片名', '累计票房', '首映日期']
+        # 保留需要的五列，按指定顺序
+        columns_order = ['排名', '英文片名', '累计票房', '首映日期', '评分']
         df = df.reindex(columns=columns_order)
         
         df.to_csv(filename, index=False, encoding='utf-8-sig')
@@ -296,7 +408,7 @@ def main():
             # 显示预览
             print("\n数据预览:")
             for movie in data[:3]:  # 显示前3条
-                print(f"{movie['排名']}. {movie['英文片名']} - {movie['累计票房']} ({movie['首映日期']})")
+                print(f"{movie['排名']}. {movie['英文片名']} - {movie['累计票房']} ({movie['首映日期']}) [IMDb: {movie['评分']}]")
             
             if len(data) > 3:
                 print("...")

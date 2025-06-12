@@ -73,10 +73,10 @@ def test_imdb_feature():
                     print(f"\n--- 处理第{i+1}部电影: {release_name} ---")
                     
                     # 获取IMDb评分
-                    imdb_rating = scraper.search_imdb_rating(release_name)
+                    imdb_rating = scraper.search_imdb_rating(release_name, year)
                     
                     # 获取豆瓣信息
-                    chinese_title, douban_rating = scraper.search_douban_movie(release_name)
+                    chinese_title, douban_rating = scraper.search_douban_movie(release_name, year)
                     
                     movie_data = {
                         '排名': rank,

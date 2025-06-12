@@ -25,7 +25,7 @@ def test_douban_feature():
     for movie in test_movies:
         try:
             print(f"正在搜索: {movie}")
-            chinese_title, douban_rating = scraper.search_douban_movie(movie)
+            chinese_title, douban_rating = scraper.search_douban_movie(movie, 2020)  # 测试年份为2020
             print(f"{movie:<25} {chinese_title:<20} {douban_rating:<8}")
             print("-" * 60)
             
@@ -89,10 +89,10 @@ def test_combined_features():
                     print(f"\n--- 处理第{i+1}部电影: {release_name} ---")
                     
                     # 获取IMDb评分
-                    imdb_rating = scraper.search_imdb_rating(release_name)
+                    imdb_rating = scraper.search_imdb_rating(release_name, year)
                     
                     # 获取豆瓣信息
-                    chinese_title, douban_rating = scraper.search_douban_movie(release_name)
+                    chinese_title, douban_rating = scraper.search_douban_movie(release_name, year)
                     
                     movie_data = {
                         '排名': rank,
